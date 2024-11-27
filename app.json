@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "goplan-frontend",
-    "slug": "goplan-frontend",
+    "name": "goplan",
+    "slug": "goplan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -36,6 +36,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "fef61a36-f039-4eda-87c3-37a8e2ec07b8"
+      }
     }
   }
 }
