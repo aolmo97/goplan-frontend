@@ -1,33 +1,178 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import StorageService from '../../services/storage';
+import { User } from '../../types';
+import { UI_CONFIG } from '../../config';
+
+const { COLORS, SPACING, TYPOGRAPHY } = UI_CONFIG;
 
 export default function Profile() {
-  // Datos de ejemplo
-  const user = {
-    name: 'Ana García',
-    image: 'https://randomuser.me/api/portraits/women/1.jpg',
-    interests: ['Gastronomía', 'Viajes', 'Música', 'Arte'],
-    availability: ['Tardes', 'Fines de semana'],
-    plansCreated: 5,
-    plansJoined: 8,
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userData = await StorageService.getUserData();
+      if (userData) {
+        setUser(userData);
+      } else {
+        // Datos de ejemplo para desarrollo
+        const defaultUser = {
+          id: '1',
+          name: 'Usuario de Prueba',
+          email: 'usuario@ejemplo.com',
+          image: 'https://randomuser.me/api/portraits/men/1.jpg',
+          bio: '¡Hola! Me encanta conocer gente nueva y participar en actividades interesantes.',
+          interests: ['Deportes', 'Música', 'Viajes', 'Fotografía'],
+          availability: ['Tardes', 'Fines de semana'],
+          plansCreated: 3,
+          plansJoined: 5,
+        };
+        await StorageService.saveUserData(defaultUser);
+        setUser(defaultUser);
+      }
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error al cargar datos del usuario:', error);
+      setIsLoading(false);
+    }
   };
+
+  const handleEditProfile = () => {
+    router.push('/profile/edit');
+  };
+
+  const handleSettings = () => {
+    router.push('/profile/settings');
+  };
+
+  const handleChangePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso Denegado',
+          'Necesitamos acceso a tu galería para cambiar la foto de perfil.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        // Aquí iría la lógica para subir la imagen al servidor
+        // Por ahora, solo actualizamos localmente
+        if (user) {
+          const updatedUser = {
+            ...user,
+            image: result.assets[0].uri,
+          };
+          await StorageService.saveUserData(updatedUser);
+          setUser(updatedUser);
+        }
+      }
+    } catch (error) {
+      console.error('Error al cambiar la foto:', error);
+      Alert.alert(
+        'Error',
+        'No se pudo cambiar la foto de perfil. Inténtalo de nuevo.'
+      );
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro de que quieres cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await StorageService.clearAuthData();
+              router.replace('/auth/login');
+            } catch (error) {
+              console.error('Error al cerrar sesión:', error);
+              Alert.alert('Error', 'No se pudo cerrar sesión. Inténtalo de nuevo.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>No se pudo cargar el perfil</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={loadUserData}
+        >
+          <Text style={styles.retryButtonText}>Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Image source={{ uri: user.image }} style={styles.profileImage} />
+        <TouchableOpacity onPress={handleChangePhoto}>
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: user.image }} style={styles.profileImage} />
+            <View style={styles.changePhotoButton}>
+              <FontAwesome name="camera" size={16} color="#fff" />
+            </View>
+          </View>
+        </TouchableOpacity>
         <Text style={styles.name}>{user.name}</Text>
+        {user.bio && <Text style={styles.bio}>{user.bio}</Text>}
       </View>
 
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{user.plansCreated}</Text>
+          <Text style={styles.statNumber}>{user.plansCreated || 0}</Text>
           <Text style={styles.statLabel}>Planes Creados</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{user.plansJoined}</Text>
+          <Text style={styles.statNumber}>{user.plansJoined || 0}</Text>
           <Text style={styles.statLabel}>Planes Unidos</Text>
         </View>
       </View>
@@ -35,7 +180,7 @@ export default function Profile() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Intereses</Text>
         <View style={styles.tagsContainer}>
-          {user.interests.map((interest, index) => (
+          {user.interests?.map((interest, index) => (
             <View key={index} style={styles.tag}>
               <Text style={styles.tagText}>{interest}</Text>
             </View>
@@ -46,7 +191,7 @@ export default function Profile() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Disponibilidad</Text>
         <View style={styles.tagsContainer}>
-          {user.availability.map((time, index) => (
+          {user.availability?.map((time, index) => (
             <View key={index} style={styles.tag}>
               <Text style={styles.tagText}>{time}</Text>
             </View>
@@ -54,14 +199,28 @@ export default function Profile() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.editButton}>
+      <TouchableOpacity
+        style={styles.editButton}
+        onPress={handleEditProfile}
+      >
         <FontAwesome name="edit" size={20} color="#fff" />
         <Text style={styles.editButtonText}>Editar Perfil</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.settingsButton}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={handleSettings}
+      >
         <FontAwesome name="cog" size={20} color="#666" />
         <Text style={styles.settingsButtonText}>Configuración</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
+        <FontAwesome name="sign-out" size={20} color={COLORS.ERROR} />
+        <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -70,31 +229,84 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.BACKGROUND,
+    padding: SPACING.LARGE,
+  },
+  errorText: {
+    fontSize: TYPOGRAPHY.SIZES.MEDIUM,
+    color: COLORS.ERROR,
+    textAlign: 'center',
+    marginBottom: SPACING.MEDIUM,
+  },
+  retryButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.LARGE,
+    paddingVertical: SPACING.MEDIUM,
+    borderRadius: 25,
+  },
+  retryButtonText: {
+    color: COLORS.BACKGROUND,
+    fontSize: TYPOGRAPHY.SIZES.MEDIUM,
+    fontWeight: TYPOGRAPHY.WEIGHTS.BOLD,
   },
   header: {
     alignItems: 'center',
-    padding: 20,
+    padding: SPACING.LARGE,
     paddingTop: 40,
+  },
+  imageContainer: {
+    position: 'relative',
+    marginBottom: SPACING.MEDIUM,
   },
   profileImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: 15,
+  },
+  changePhotoButton: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    backgroundColor: COLORS.PRIMARY,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: COLORS.BACKGROUND,
   },
   name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: TYPOGRAPHY.SIZES.XLARGE,
+    fontWeight: TYPOGRAPHY.WEIGHTS.BOLD,
+    color: COLORS.TEXT,
+    marginBottom: SPACING.TINY,
+  },
+  bio: {
+    fontSize: TYPOGRAPHY.SIZES.MEDIUM,
+    color: COLORS.GRAY,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.LARGE,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
-    backgroundColor: '#f8f8f8',
-    marginVertical: 20,
+    paddingVertical: SPACING.LARGE,
+    backgroundColor: COLORS.LIGHT_GRAY,
+    marginVertical: SPACING.LARGE,
   },
   statItem: {
     alignItems: 'center',
@@ -103,73 +315,88 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#ddd',
+    backgroundColor: COLORS.GRAY,
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FF6B6B',
+    fontSize: TYPOGRAPHY.SIZES.XLARGE,
+    fontWeight: TYPOGRAPHY.WEIGHTS.BOLD,
+    color: COLORS.PRIMARY,
   },
   statLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+    fontSize: TYPOGRAPHY.SIZES.SMALL,
+    color: COLORS.GRAY,
+    marginTop: SPACING.TINY,
   },
   section: {
-    padding: 20,
+    padding: SPACING.LARGE,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    fontSize: TYPOGRAPHY.SIZES.LARGE,
+    fontWeight: TYPOGRAPHY.WEIGHTS.BOLD,
+    color: COLORS.TEXT,
+    marginBottom: SPACING.MEDIUM,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -5,
+    marginHorizontal: -SPACING.TINY,
   },
   tag: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.MEDIUM,
+    paddingVertical: SPACING.SMALL,
     borderRadius: 20,
-    margin: 5,
+    margin: SPACING.TINY,
   },
   tagText: {
-    color: '#fff',
-    fontSize: 14,
+    color: COLORS.BACKGROUND,
+    fontSize: TYPOGRAPHY.SIZES.SMALL,
   },
   editButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: COLORS.PRIMARY,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    marginHorizontal: 20,
+    padding: SPACING.MEDIUM,
+    marginHorizontal: SPACING.LARGE,
     borderRadius: 10,
-    marginTop: 20,
+    marginTop: SPACING.LARGE,
   },
   editButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 10,
+    color: COLORS.BACKGROUND,
+    fontSize: TYPOGRAPHY.SIZES.MEDIUM,
+    fontWeight: TYPOGRAPHY.WEIGHTS.BOLD,
+    marginLeft: SPACING.SMALL,
   },
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    marginHorizontal: 20,
+    padding: SPACING.MEDIUM,
+    marginHorizontal: SPACING.LARGE,
     borderRadius: 10,
-    marginTop: 10,
-    marginBottom: 30,
-    backgroundColor: '#f0f0f0',
+    marginTop: SPACING.MEDIUM,
+    backgroundColor: COLORS.LIGHT_GRAY,
   },
   settingsButtonText: {
-    color: '#666',
-    fontSize: 16,
-    marginLeft: 10,
+    color: COLORS.GRAY,
+    fontSize: TYPOGRAPHY.SIZES.MEDIUM,
+    marginLeft: SPACING.SMALL,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.MEDIUM,
+    marginHorizontal: SPACING.LARGE,
+    borderRadius: 10,
+    marginTop: SPACING.MEDIUM,
+    marginBottom: SPACING.LARGE,
+    backgroundColor: COLORS.LIGHT_GRAY,
+  },
+  logoutButtonText: {
+    color: COLORS.ERROR,
+    fontSize: TYPOGRAPHY.SIZES.MEDIUM,
+    marginLeft: SPACING.SMALL,
   },
 });
