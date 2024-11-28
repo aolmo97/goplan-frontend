@@ -1,8 +1,8 @@
 // Configuración del entorno
 const ENV = {
   dev: {
-    API_URL: 'http://localhost:3000',
-    SOCKET_URL: 'ws://localhost:3000',
+    API_URL: 'http://192.168.18.18:3000',
+    SOCKET_URL: 'ws://192.168.18.18:3000',
     ENVIRONMENT: 'development',
   },
   staging: {
@@ -23,6 +23,33 @@ const currentEnv = ENV.dev;
 export const API_URL = currentEnv.API_URL;
 export const SOCKET_URL = currentEnv.SOCKET_URL;
 export const ENVIRONMENT = currentEnv.ENVIRONMENT;
+
+// Configuración de la API
+export const API_CONFIG = {
+  BASE_URL: 'http://192.168.18.18:3000/api', // URL base para desarrollo
+  TIMEOUT: 10000, // Timeout en milisegundos
+  ENDPOINTS: {
+    AUTH: {
+      LOGIN: '/auth/login',
+      REGISTER: '/auth/register',
+      SOCIAL_LOGIN: '/auth/social',
+      LOGOUT: '/auth/logout',
+    },
+    USER: {
+      PROFILE: '/user/profile',
+      UPDATE: '/user/update',
+      PHOTOS: '/user/photos',
+      DELETE_PHOTO: '/user/delete-photo',
+      DELETE_IMAGE: '/user/delete-image',
+      UPLOAD_PHOTOS: '/user/upload-photos',
+    },
+    PLANS: {
+      CREATE: '/plans/create',
+      LIST: '/plans/list',
+      JOIN: '/plans/join',
+    },
+  },
+};
 
 // Configuración de la aplicación
 export const APP_CONFIG = {

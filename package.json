@@ -30,6 +30,7 @@
     "expo-font": "~13.0.1",
     "expo-haptics": "~14.0.0",
     "expo-image-picker": "~16.0.3",
+    "expo-linear-gradient": "~14.0.1",
     "expo-linking": "~7.0.3",
     "expo-notifications": "^0.29.8",
     "expo-router": "~4.0.9",
@@ -47,8 +48,7 @@
     "react-native-screens": "~4.1.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.2",
-    "socket.io-client": "^4.8.1",
-    "expo-linear-gradient": "~14.0.1"
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -29,6 +29,7 @@ export default function Profile() {
   const loadUserData = async () => {
     try {
       const userData = await StorageService.getUserData();
+      
       if (userData) {
         setUser(userData);
       } else {
@@ -37,10 +38,16 @@ export default function Profile() {
           id: '1',
           name: 'Usuario de Prueba',
           email: 'usuario@ejemplo.com',
-          image: 'https://randomuser.me/api/portraits/men/1.jpg',
+          avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
           bio: '¡Hola! Me encanta conocer gente nueva y participar en actividades interesantes.',
           interests: ['Deportes', 'Música', 'Viajes', 'Fotografía'],
-          availability: ['Tardes', 'Fines de semana'],
+          availability: {
+            weekdays: true,
+            weekends: true,
+            mornings: true,
+            afternoons: true,
+            evenings: true,
+          },
           plansCreated: 3,
           plansJoined: 5,
         };
@@ -128,6 +135,30 @@ export default function Profile() {
     );
   };
 
+  const renderAvailability = () => {
+    if (!user?.availability) return null;
+
+    const availabilityText = [];
+    if (user.availability.weekdays) availabilityText.push('Entre semana');
+    if (user.availability.weekends) availabilityText.push('Fines de semana');
+    if (user.availability.mornings) availabilityText.push('Mañanas');
+    if (user.availability.afternoons) availabilityText.push('Tardes');
+    if (user.availability.evenings) availabilityText.push('Noches');
+
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Disponibilidad</Text>
+        <View style={styles.availabilityContainer}>
+          {availabilityText.map((text, index) => (
+            <View key={index} style={styles.availabilityItem}>
+              <Text style={styles.availabilityText}>{text}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -155,7 +186,7 @@ export default function Profile() {
       <View style={styles.header}>
         <TouchableOpacity onPress={handleChangePhoto}>
           <View style={styles.imageContainer}>
-            <Image source={{ uri: user.image }} style={styles.profileImage} />
+            <Image source={{ uri: user.avatar }} style={styles.profileImage} />
             <View style={styles.changePhotoButton}>
               <FontAwesome name="camera" size={16} color="#fff" />
             </View>
@@ -188,16 +219,7 @@ export default function Profile() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Disponibilidad</Text>
-        <View style={styles.tagsContainer}>
-          {user.availability?.map((time, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>{time}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
+      {renderAvailability()}
 
       <TouchableOpacity
         style={styles.editButton}
@@ -349,6 +371,22 @@ const styles = StyleSheet.create({
     margin: SPACING.TINY,
   },
   tagText: {
+    color: COLORS.BACKGROUND,
+    fontSize: TYPOGRAPHY.SIZES.SMALL,
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -SPACING.TINY,
+  },
+  availabilityItem: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.MEDIUM,
+    paddingVertical: SPACING.SMALL,
+    borderRadius: 20,
+    margin: SPACING.TINY,
+  },
+  availabilityText: {
     color: COLORS.BACKGROUND,
     fontSize: TYPOGRAPHY.SIZES.SMALL,
   },

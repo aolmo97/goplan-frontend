@@ -3,10 +3,16 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  image?: string;
+  photos?: string[];
   bio?: string;
   interests?: string[];
-  availability?: string[];
+  availability?: {
+    weekdays: boolean;
+    weekends: boolean;
+    mornings: boolean;
+    afternoons: boolean;
+    evenings: boolean;
+  };
   plansCreated?: number;
   plansJoined?: number;
   location?: {
@@ -23,7 +29,7 @@ export interface Plan {
   category: string;
   date: Date;
   location: string;
-  image?: string;
+  avatar?: string;
   creator: User;
   participants: User[];
   maxParticipants: number;
@@ -161,4 +167,18 @@ export interface Location {
 export interface CacheEntry<T> {
   value: T;
   expiry: number;
+}
+
+// Tipos de perfil
+export interface ProfileData {
+  bio: string;
+  interests: string[];
+  avatar?: string;
+  availability: {
+    weekdays: boolean;
+    weekends: boolean;
+    mornings: boolean;
+    afternoons: boolean;
+    evenings: boolean;
+  };
 }

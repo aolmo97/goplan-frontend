@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
+import AuthService from '../../services/auth';
 
 export default function RegisterScreen() {
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -10,10 +12,42 @@ export default function RegisterScreen() {
     name: '',
     phone: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const validateInputs = () => {
+    if (!formData.email.trim()) {
+      Alert.alert('Error', 'Por favor, introduce tu email');
+      return false;
+    }
+    if (!formData.password.trim()) {
+      Alert.alert('Error', 'Por favor, introduce tu contraseña');
+      return false;
+    }
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      Alert.alert('Error', 'Por favor, introduce un email válido');
+      return false;
+    }
+    return true;
+  };
 
-  const handleRegister = () => {
-    // TODO: Implementar lógica de registro
-    router.push('/profile-setup');
+  const handleRegister = async () => {
+    console.log("register");
+    
+    if (!validateInputs()) return;
+    console.log("validate");
+    
+    setIsLoading(true);
+    try {
+      await AuthService.register(formData);
+      // La redirección ahora se maneja en el servicio de auth
+    } catch (error) {
+      Alert.alert(
+        'Error de registro',
+        error instanceof Error ? error.message : 'Ha ocurrido un error al registrarse'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const updateFormData = (key: string, value: string) => {

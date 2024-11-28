@@ -1,5 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const TOKEN_KEY = '@goplan_auth_token';
+const USER_DATA_KEY = '@goplan_user_data';
+
 class StorageService {
   private static instance: StorageService;
 
@@ -65,19 +68,53 @@ class StorageService {
   // Datos del usuario
   async getUserData() {
     try {
-      const userData = await AsyncStorage.getItem('user_data');
+      const userData = await AsyncStorage.getItem(USER_DATA_KEY);
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
-      console.error('Error al obtener datos del usuario:', error);
+      console.error('Error getting user data:', error);
       return null;
     }
   }
 
-  async saveUserData(userData: any) {
+  async setUserData(userData: any): Promise<void> {
     try {
-      await AsyncStorage.setItem('user_data', JSON.stringify(userData));
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
     } catch (error) {
-      console.error('Error al guardar datos del usuario:', error);
+      console.error('Error setting user data:', error);
+    }
+  }
+
+  async clearUserData(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(USER_DATA_KEY);
+    } catch (error) {
+      console.error('Error clearing user data:', error);
+    }
+  }
+
+  // Autenticación
+  async getAuthToken(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(TOKEN_KEY);
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      return null;
+    }
+  }
+
+  async setAuthToken(token: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(TOKEN_KEY, token);
+    } catch (error) {
+      console.error('Error setting auth token:', error);
+    }
+  }
+
+  async clearAuthToken(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(TOKEN_KEY);
+    } catch (error) {
+      console.error('Error clearing auth token:', error);
     }
   }
 
@@ -150,7 +187,7 @@ class StorageService {
   // Auth related
   async clearAuthData() {
     try {
-      await AsyncStorage.multiRemove(['auth_token', 'user_data']);
+      await AsyncStorage.multiRemove([TOKEN_KEY, USER_DATA_KEY]);
     } catch (error) {
       console.error('Error al limpiar datos de autenticación:', error);
     }
