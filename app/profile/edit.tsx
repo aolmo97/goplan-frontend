@@ -194,12 +194,6 @@ export default function EditProfile() {
             }
           }
 
-          console.log('Preparando archivo:', {
-            uri: typeof fileToUpload === 'object' ? fileToUpload.uri : 'blob',
-            type: mimeType,
-            name: filename
-          });
-
           formData.append('photos', fileToUpload);
         }
 
