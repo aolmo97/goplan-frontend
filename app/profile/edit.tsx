@@ -86,9 +86,7 @@ export default function EditProfile() {
           body: formData
         });
 
-        console.log('Respuesta recibida:', response.status);
         const responseText = await response.text();
-        console.log('Texto de respuesta:', responseText);
 
         if (!response.ok) {
           const errorData = JSON.parse(responseText);
@@ -137,11 +135,9 @@ export default function EditProfile() {
         setUploadingImage(true);
         const formData = new FormData();
         
-        console.log('Archivos seleccionados:', result.assets.length);
 
         for (const asset of result.assets) {
           const photoUri = asset.uri;
-          console.log('URI original:', photoUri);
 
           // Generar un nombre de archivo único
           const timestamp = new Date().getTime();
