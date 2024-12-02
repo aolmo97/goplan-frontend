@@ -17,7 +17,9 @@ import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { UI_CONFIG } from '../../config';
 import ProfileService from '../../services/profile';
+import StorageService from '../../services/storage'; // Importar StorageService
 import { User } from '../../types';
+import { API_CONFIG } from '../../config';
 
 const { COLORS } = UI_CONFIG;
 const { width } = Dimensions.get('window');
@@ -65,56 +67,167 @@ export default function EditProfile() {
     }
   };
 
+  // Función de utilidad para esperar
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Función para subir fotos con reintentos
+  const uploadPhotosWithRetry = async (formData: FormData, token: string, maxRetries = 3) => {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Intento ${attempt} de ${maxRetries}...`);
+        
+        const response = await fetch(`${API_CONFIG.BASE_URL}/user/photos`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        console.log('Respuesta recibida:', response.status);
+        const responseText = await response.text();
+        console.log('Texto de respuesta:', responseText);
+
+        if (!response.ok) {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.message || 'Error al subir las fotos');
+        }
+
+        return JSON.parse(responseText);
+      } catch (error) {
+        console.log(`Error en intento ${attempt}:`, error);
+        lastError = error;
+        
+        if (attempt < maxRetries) {
+          // Esperar un tiempo exponencial entre reintentos
+          const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          console.log(`Esperando ${waitTime}ms antes del siguiente intento...`);
+          await wait(waitTime);
+        }
+      }
+    }
+    
+    throw lastError;
+  };
+
   const handlePhotoSelect = async () => {
-    if (user.photos.length >= MAX_PHOTOS) {
-      Alert.alert('Límite alcanzado', 'Ya has agregado el máximo de fotos permitidas');
+    if (uploadingImage) {
       return;
     }
 
     try {
+      const token = await StorageService.getAuthToken();
+      if (!token) {
+        Alert.alert('Error', 'No hay sesión activa');
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 5],
         quality: 0.8,
+        allowsMultipleSelection: true,
+        selectionLimit: MAX_PHOTOS - (user.photos?.length || 0)
       });
 
-      if (!result.canceled) {
+      if (!result.canceled && result.assets.length > 0) {
         setUploadingImage(true);
         const formData = new FormData();
-        const photoUri = result.assets[0].uri;
         
-        // Asegurarse de que tenemos la extensión correcta
-        const filename = photoUri.split('/').pop() || 'photo.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const ext = match ? match[1] : 'jpg';
-        const type = `image/${ext}`;
+        console.log('Archivos seleccionados:', result.assets.length);
 
-        // En iOS, necesitamos convertir el URI de asset-library:// a un URI de archivo
-        const finalUri = Platform.OS === 'ios' ? photoUri.replace('file://', '') : photoUri;
+        for (const asset of result.assets) {
+          const photoUri = asset.uri;
+          console.log('URI original:', photoUri);
 
-        // Crear el objeto del archivo con el formato correcto
-        formData.append('photos', {
-          uri: finalUri,
-          type: type,
-          name: `photo.${ext}`,
-        } as any);
+          // Generar un nombre de archivo único
+          const timestamp = new Date().getTime();
+          const randomString = Math.random().toString(36).substring(7);
+          let filename = `photo_${timestamp}_${randomString}.jpg`;
 
-        console.log('Enviando FormData:', {
-          uri: finalUri,
-          type: type,
-          name: `photo.${ext}`,
-        });
+          // Determinar el tipo MIME basado en el URI o usar jpeg por defecto
+          let mimeType = 'image/jpeg';
+          if (photoUri.startsWith('data:')) {
+            mimeType = photoUri.split(';')[0].split(':')[1];
+          }
 
-        const photoUrls = await ProfileService.uploadPhotos(formData);
-        setUser(prev => ({
-          ...prev,
-          photos: [...prev.photos, ...photoUrls],
-        }));
+          // Preparar el objeto del archivo según la plataforma
+          let fileToUpload: any;
+
+          if (Platform.OS === 'web') {
+            if (photoUri.startsWith('data:')) {
+              const response = await fetch(photoUri);
+              const blob = await response.blob();
+              fileToUpload = new File([blob], filename, { type: mimeType });
+            } else {
+              fileToUpload = asset as any;
+              filename = asset.name || filename;
+              mimeType = asset.type || mimeType;
+            }
+          } else {
+            let finalUri = photoUri;
+            
+            // En Android, asegurarse de que el archivo esté accesible
+            if (Platform.OS === 'android') {
+              try {
+                const response = await fetch(photoUri);
+                const blob = await response.blob();
+                console.log('Blob creado correctamente:', blob.size, 'bytes');
+                
+                // Usar el blob directamente en Android
+                fileToUpload = {
+                  uri: photoUri,
+                  type: blob.type || mimeType,
+                  name: filename
+                };
+              } catch (error) {
+                console.error('Error al procesar archivo en Android:', error);
+                throw new Error('No se pudo procesar el archivo seleccionado');
+              }
+            } else {
+              // iOS
+              finalUri = photoUri.replace('file://', '');
+              fileToUpload = {
+                uri: finalUri,
+                type: mimeType,
+                name: filename
+              };
+            }
+          }
+
+          console.log('Preparando archivo:', {
+            uri: typeof fileToUpload === 'object' ? fileToUpload.uri : 'blob',
+            type: mimeType,
+            name: filename
+          });
+
+          formData.append('photos', fileToUpload);
+        }
+
+        console.log('FormData creado, enviando solicitud...');
+
+        // Usar la función de reintento para subir las fotos
+        const data = await uploadPhotosWithRetry(formData, token);
+        
+        if (data.photoUrls && data.photoUrls.length > 0) {
+          setUser(prev => ({
+            ...prev,
+            photos: [...(prev.photos || []), ...data.photoUrls]
+          }));
+          Alert.alert('Éxito', `${data.photoUrls.length} foto(s) subida(s) correctamente`);
+        } else {
+          throw new Error('No se recibieron URLs de fotos del servidor');
+        }
       }
     } catch (error) {
-      console.error('Error al subir foto:', error);
-      Alert.alert('Error', 'No se pudo subir la foto');
+      console.error('Error en handlePhotoSelect:', error);
+      Alert.alert(
+        'Error', 
+        error instanceof Error ? error.message : 'No se pudo subir la(s) foto(s). Por favor, intenta de nuevo.'
+      );
     } finally {
       setUploadingImage(false);
     }

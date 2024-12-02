@@ -118,12 +118,11 @@ class ProfileService {
   async uploadPhotos(photos: FormData): Promise<string[]> {
     try {
       const headers = await this.getAuthHeaders();
-      // NO establecer Content-Type, dejar que el navegador/fetch lo maneje
-      headers.delete('Content-Type');
+      headers.delete('Content-Type'); // Importante: dejar que fetch establezca el boundary correcto
       
-      console.log('Enviando petición con headers:', headers);
+      console.log('URL completa:', `${this.baseUrl}/user/photos`);
       
-      const response = await this.fetchWithTimeout(`${this.baseUrl}${API_CONFIG.ENDPOINTS.USER.UPLOAD_PHOTOS}`, {
+      const response = await fetch(`${this.baseUrl}/user/photos`, {
         method: 'POST',
         headers,
         body: photos,
@@ -137,10 +136,10 @@ class ProfileService {
       const data = await response.json();
       return data.photoUrls || [];
     } catch (error) {
-      console.error('Error uploading photos:', error);
+      console.error('Error detallado en uploadPhotos:', error);
       throw error;
     }
-  }
+}
   async deletePhoto(photoId: string): Promise<void> {
     try {
       const response = await this.fetchWithTimeout(`${this.baseUrl}${API_CONFIG.ENDPOINTS.USER.DELETE_PHOTO}/${photoId}`, {
