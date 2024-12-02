@@ -21,28 +21,63 @@ import StorageService from '../../services/storage'; // Importar StorageService
 import { User } from '../../types';
 import { API_CONFIG } from '../../config';
 
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  bio: string;
+  interests: string[];
+  photos: string[];
+  availability: {
+    days: string[];
+    timeRanges: string[];
+  };
+  settings: {
+    notifications: {
+      enabled: boolean;
+      chatMessages: boolean;
+      planUpdates: boolean;
+      reminders: boolean;
+    };
+    privacy: {
+      shareLocation: boolean;
+      publicProfile: boolean;
+    };
+  };
+}
+
 const { COLORS } = UI_CONFIG;
 const { width } = Dimensions.get('window');
 
 const MAX_PHOTOS = 6;
 
 export default function EditProfile() {
-  const [user, setUser] = useState<User>({
+  const [user, setUser] = useState<UserProfile>({
     id: '',
     name: '',
     email: '',
     bio: '',
-    photos: [],
     interests: [],
+    photos: [],
     availability: {
-      weekdays: false,
-      weekends: false,
-      mornings: false,
-      afternoons: false,
-      evenings: false,
+      days: [],
+      timeRanges: []
     },
+    settings: {
+      notifications: {
+        enabled: true,
+        chatMessages: true,
+        planUpdates: true,
+        reminders: true
+      },
+      privacy: {
+        shareLocation: true,
+        publicProfile: true
+      }
+    }
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
@@ -51,19 +86,90 @@ export default function EditProfile() {
 
   const loadUserData = async () => {
     try {
+      console.log('Iniciando carga de datos del perfil...');
       setIsLoading(true);
-      const userData = await ProfileService.getProfile();
-      console.log('userData', userData);
-      
-      setUser({
-        ...userData,
-        photos: userData.photos || []
-      });
+      setError(null);
+
+      // Primero intentar cargar datos locales
+      const localUserData = await StorageService.getUserData();
+      console.log('Datos locales obtenidos:', localUserData);
+
+      if (localUserData) {
+        const formattedLocalData = {
+          id: localUserData.id || '',
+          name: localUserData.name || '',
+          email: localUserData.email || '',
+          bio: localUserData.bio || '',
+          interests: localUserData.interests || [],
+          photos: localUserData.photos || [],
+          availability: {
+            days: localUserData.availability?.days || [],
+            timeRanges: localUserData.availability?.timeRanges || []
+          },
+          settings: {
+            notifications: {
+              enabled: localUserData.settings?.notifications?.enabled ?? true,
+              chatMessages: localUserData.settings?.notifications?.chatMessages ?? true,
+              planUpdates: localUserData.settings?.notifications?.planUpdates ?? true,
+              reminders: localUserData.settings?.notifications?.reminders ?? true
+            },
+            privacy: {
+              shareLocation: localUserData.settings?.privacy?.shareLocation ?? true,
+              publicProfile: localUserData.settings?.privacy?.publicProfile ?? true
+            }
+          }
+        };
+        console.log('Estableciendo datos locales:', formattedLocalData);
+        setUser(formattedLocalData);
+      }
+
+      // Obtener datos del servidor
+      console.log('Solicitando datos del servidor...');
+      const serverData = await ProfileService.getProfile();
+      console.log('Datos del servidor recibidos:', serverData);
+
+      if (serverData) {
+        const formattedServerData = {
+          id: serverData.id || '',
+          name: serverData.name || '',
+          email: serverData.email || '',
+          bio: serverData.bio || '',
+          interests: serverData.interests || [],
+          photos: serverData.photos || [],
+          availability: {
+            days: serverData.availability?.days || [],
+            timeRanges: serverData.availability?.timeRanges || []
+          },
+          settings: {
+            notifications: {
+              enabled: serverData.settings?.notifications?.enabled ?? true,
+              chatMessages: serverData.settings?.notifications?.chatMessages ?? true,
+              planUpdates: serverData.settings?.notifications?.planUpdates ?? true,
+              reminders: serverData.settings?.notifications?.reminders ?? true
+            },
+            privacy: {
+              shareLocation: serverData.settings?.privacy?.shareLocation ?? true,
+              publicProfile: serverData.settings?.privacy?.publicProfile ?? true
+            }
+          }
+        };
+        console.log('Actualizando estado con datos del servidor:', formattedServerData);
+        setUser(formattedServerData);
+        
+        // Actualizar almacenamiento local
+        await StorageService.setUserData(formattedServerData);
+        console.log('Datos del servidor guardados localmente');
+      }
     } catch (error) {
-      console.error('Error loading profile:', error);
-      Alert.alert('Error', 'No se pudo cargar el perfil');
+      console.error('Error en loadUserData:', error);
+      setError('No se pudo cargar el perfil. Por favor, intenta de nuevo.');
+      Alert.alert(
+        'Error',
+        'No se pudo cargar el perfil. Por favor, intenta de nuevo.'
+      );
     } finally {
       setIsLoading(false);
+      console.log('Proceso de carga finalizado. Estado de carga:', false);
     }
   };
 
@@ -297,38 +403,50 @@ export default function EditProfile() {
     }));
   };
 
-  const toggleAvailability = (key: keyof typeof user.availability) => {
-    setUser(prev => ({
-      ...prev,
-      availability: {
-        ...(prev.availability || {}),
-        [key]: !prev.availability?.[key]
-      }
-    }));
+  const toggleAvailability = (type: 'days' | 'timeRanges', value: string) => {
+    setUser(prev => {
+      const currentArray = prev.availability[type] || [];
+      const newArray = currentArray.includes(value)
+        ? currentArray.filter(item => item !== value)
+        : [...currentArray, value];
+      
+      return {
+        ...prev,
+        availability: {
+          ...prev.availability,
+          [type]: newArray
+        }
+      };
+    });
   };
 
   const handleSave = async () => {
     if (isLoading) return;
 
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      
+      // Guardar en el servidor
       await ProfileService.updateProfile({
-        bio: user.bio || '',
-        interests: user.interests || [],
+        bio: user.bio,
+        interests: user.interests,
         photos: user.photos,
-        availability: user.availability || {
-          weekdays: false,
-          weekends: false,
-          mornings: false,
-          afternoons: false,
-          evenings: false,
+        availability: {
+          days: user.availability.days,
+          timeRanges: user.availability.timeRanges,
         }
       });
-      await ProfileService.setUserData(user);
+
+      // Guardar localmente
+      await StorageService.setUserData(user);
+      
       router.back();
     } catch (error) {
       console.error('Error al guardar el perfil:', error);
-      Alert.alert('Error', 'No se pudo guardar el perfil. Por favor, intenta de nuevo.');
+      Alert.alert(
+        'Error',
+        'No se pudo guardar el perfil. Por favor, intenta de nuevo.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -339,86 +457,124 @@ export default function EditProfile() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleCancel} style={styles.headerButton}>
-          <FontAwesome name="times" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Editar Perfil</Text>
-        <TouchableOpacity 
-          onPress={handleSave} 
-          style={[styles.headerButton, isLoading && styles.disabledButton]}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={COLORS.primary} size="small" />
-          ) : (
-            <FontAwesome name="check" size={24} color={COLORS.primary} />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content}>
-        {renderPhotos()}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sobre ti</Text>
-          <TextInput
-            style={styles.bioInput}
-            placeholder="Escribe algo sobre ti..."
-            multiline
-            value={user.bio}
-            onChangeText={(text) => setUser(prev => ({ ...prev, bio: text }))}
-          />
+    <ScrollView style={styles.container}>
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={loadUserData}
+          >
+            <Text style={styles.retryButtonText}>Intentar de nuevo</Text>
+          </TouchableOpacity>
         </View>
+      ) : (
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleCancel} style={styles.headerButton}>
+              <FontAwesome name="times" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Editar Perfil</Text>
+            <TouchableOpacity 
+              onPress={handleSave} 
+              style={[styles.headerButton, isLoading && styles.disabledButton]}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={COLORS.primary} size="small" />
+              ) : (
+                <FontAwesome name="check" size={24} color={COLORS.primary} />
+              )}
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Intereses</Text>
-          <View style={styles.interestsContainer}>
-            {['Cultura', 'Gastronomía', 'Conciertos', 'Viajes', 'Deporte', 'Cine', 'Teatro', 'Música', 'Arte', 'Fotografía', 'Naturaleza', 'Tecnología', 'Gaming', 'Lectura', 'Baile'].map((interest) => (
-              <TouchableOpacity
-                key={interest}
-                style={[
-                  styles.interestChip,
-                  user.interests?.includes(interest) && styles.selectedInterest
-                ]}
-                onPress={() => toggleInterest(interest)}
-              >
-                <Text style={[
-                  styles.interestText,
-                  user.interests?.includes(interest) && styles.selectedInterestText
-                ]}>
-                  {interest}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {renderPhotos()}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Sobre ti</Text>
+            <TextInput
+              style={styles.bioInput}
+              placeholder="Escribe algo sobre ti..."
+              multiline
+              value={user.bio}
+              onChangeText={(text) => setUser(prev => ({ ...prev, bio: text }))}
+            />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Intereses</Text>
+            <View style={styles.interestsContainer}>
+              {['Cultura', 'Gastronomía', 'Conciertos', 'Viajes', 'Deporte', 'Cine', 'Teatro', 'Música', 'Arte', 'Fotografía', 'Naturaleza', 'Tecnología', 'Gaming', 'Lectura', 'Baile'].map((interest) => (
+                <TouchableOpacity
+                  key={interest}
+                  style={[
+                    styles.interestChip,
+                    user.interests?.includes(interest) && styles.selectedInterest
+                  ]}
+                  onPress={() => toggleInterest(interest)}
+                >
+                  <Text style={[
+                    styles.interestText,
+                    user.interests?.includes(interest) && styles.selectedInterestText
+                  ]}>
+                    {interest}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Disponibilidad</Text>
+            <View style={styles.availabilityContainer}>
+              <Text style={styles.subsectionTitle}>Días</Text>
+              <View style={styles.chipContainer}>
+                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day) => (
+                  <TouchableOpacity
+                    key={day}
+                    style={[
+                      styles.availabilityChip,
+                      user.availability.days.includes(day) && styles.selectedAvailability
+                    ]}
+                    onPress={() => toggleAvailability('days', day)}
+                  >
+                    <Text style={[
+                      styles.availabilityText,
+                      user.availability.days.includes(day) && styles.selectedAvailabilityText
+                    ]}>
+                      {day}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              
+              <Text style={[styles.subsectionTitle, { marginTop: 15 }]}>Horarios</Text>
+              <View style={styles.chipContainer}>
+                {['Mañana', 'Tarde', 'Noche'].map((time) => (
+                  <TouchableOpacity
+                    key={time}
+                    style={[
+                      styles.availabilityChip,
+                      user.availability.timeRanges.includes(time) && styles.selectedAvailability
+                    ]}
+                    onPress={() => toggleAvailability('timeRanges', time)}
+                  >
+                    <Text style={[
+                      styles.availabilityText,
+                      user.availability.timeRanges.includes(time) && styles.selectedAvailabilityText
+                    ]}>
+                      {time}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Disponibilidad</Text>
-          <View style={styles.availabilityContainer}>
-            {Object.entries(user.availability || {}).map(([key, value]) => (
-              <TouchableOpacity
-                key={key}
-                style={[
-                  styles.availabilityChip,
-                  value && styles.selectedAvailability
-                ]}
-                onPress={() => toggleAvailability(key as keyof typeof user.availability)}
-              >
-                <Text style={[
-                  styles.availabilityText,
-                  value && styles.selectedAvailabilityText
-                ]}>
-                  {key.charAt(0).toUpperCase() + key.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </ScrollView>
-    </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -426,6 +582,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  content: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -455,13 +614,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
-  content: {
-    flex: 1,
-  },
   loadingContainer: {
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loader: {
+    padding: 20,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 10,
+  },
+  retryButton: {
+    padding: 10,
+    backgroundColor: '#007bff',
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    color: '#fff',
   },
   photosContainer: {
     flexDirection: 'row',
@@ -569,5 +747,16 @@ const styles = StyleSheet.create({
   },
   selectedAvailabilityText: {
     color: '#fff',
+  },
+  subsectionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.text,
+    marginBottom: 10,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
 });

@@ -91,7 +91,7 @@ class ProfileService {
       }
 
       const data = await response.json();
-      return data;
+      return data.user;
     } catch (error) {
       console.error('Error getting profile:', error);
       throw error;

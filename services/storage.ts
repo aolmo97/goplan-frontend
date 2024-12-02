@@ -69,6 +69,8 @@ class StorageService {
   async getUserData() {
     try {
       const userData = await AsyncStorage.getItem(USER_DATA_KEY);
+      console.log('User dataaaa:', userData);
+      
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
       console.error('Error getting user data:', error);
@@ -78,6 +80,8 @@ class StorageService {
 
   async setUserData(userData: any): Promise<void> {
     try {
+      console.log('User data:', userData);
+      
       await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
     } catch (error) {
       console.error('Error setting user data:', error);

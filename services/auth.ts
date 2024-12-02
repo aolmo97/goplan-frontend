@@ -76,6 +76,7 @@ class AuthService {
       }
 
       const data: LoginResponse = await response.json();
+      console.log(data);
       
       // Guardar el token y los datos del usuario
       await StorageService.setAuthToken(data.token);
