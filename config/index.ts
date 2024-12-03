@@ -26,7 +26,8 @@ export const ENVIRONMENT = currentEnv.ENVIRONMENT;
 
 // Configuración de la API
 export const API_CONFIG = {
-  BASE_URL: 'http://192.168.18.18:3000/api', // URL base para desarrollo
+  BASE_URL: 'http://192.168.1.6:3000/api', // URL base para desarrollo
+//  BASE_URL: 'http://192.168.18.18:3000/api', // URL base para desarrollo
   TIMEOUT: 10000, // Timeout en milisegundos
   ENDPOINTS: {
     AUTH: {
@@ -39,7 +40,7 @@ export const API_CONFIG = {
       PROFILE: '/user/profile',
       UPDATE: '/user/update',
       PHOTOS: '/user/photos',
-      DELETE_PHOTO: '/user/delete-photo',
+      DELETE_PHOTO: '/user/photos', // Actualizado para coincidir con el backend
       DELETE_IMAGE: '/user/delete-image',
       UPLOAD_PHOTOS: '/user/upload-photos',
     },

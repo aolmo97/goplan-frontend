@@ -139,16 +139,19 @@ class ProfileService {
       console.error('Error detallado en uploadPhotos:', error);
       throw error;
     }
-}
-  async deletePhoto(photoId: string): Promise<void> {
+  }
+
+  async deletePhoto(index: number): Promise<void> {
     try {
-      const response = await this.fetchWithTimeout(`${this.baseUrl}${API_CONFIG.ENDPOINTS.USER.DELETE_PHOTO}/${photoId}`, {
+
+      const response = await this.fetchWithTimeout(`${this.baseUrl}/user/photos/${index}`, {
         method: 'DELETE',
         headers: await this.getAuthHeaders(),
       });
 
       if (!response.ok) {
-        throw new Error('Error al eliminar la foto');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al eliminar la foto');
       }
     } catch (error) {
       console.error('Error deleting photo:', error);

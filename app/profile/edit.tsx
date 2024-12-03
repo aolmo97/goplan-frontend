@@ -329,15 +329,28 @@ export default function EditProfile() {
     }
   };
 
-  const handleDeletePhoto = async (photoUrl: string) => {
+  const handleDeletePhoto = async (index: number) => {
     try {
-      await ProfileService.deletePhoto(photoUrl);
+      setIsLoading(true);
+      await ProfileService.deletePhoto(index);
+      
+      // Actualizar el estado local después de eliminar la foto
       setUser(prev => ({
         ...prev,
-        photos: prev.photos.filter(url => url !== photoUrl),
+        photos: prev.photos.filter((url, i) => i !== index)
       }));
+
+      // Actualizar el almacenamiento local
+      const userData = await StorageService.getUserData();
+      if (userData) {
+        userData.photos = userData.photos.filter((url, i) => i !== index);
+        await StorageService.setUserData(userData);
+      }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo eliminar la foto');
+      console.error('Error deleting photo:', error);
+      Alert.alert('Error', 'No se pudo eliminar la foto. Por favor, intenta de nuevo.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -363,7 +376,7 @@ export default function EditProfile() {
             />
             <TouchableOpacity
               style={styles.deletePhotoButton}
-              onPress={() => handleDeletePhoto(photo)}
+              onPress={() => handleDeletePhoto(index)}
             >
               <View style={styles.deleteButtonBackground}>
                 <Ionicons name="close" size={20} color="white" />
@@ -612,7 +625,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.text,
+    color: COLORS.TEXT,
   },
   loadingContainer: {
     padding: 20,
@@ -676,13 +689,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: COLORS.primary,
+    borderColor: COLORS.PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f8f8f8',
   },
   addPhotoText: {
-    color: COLORS.primary,
+    color: COLORS.PRIMARY,
     marginTop: 5,
     fontSize: 12,
     fontWeight: '500',
@@ -696,7 +709,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
-    color: COLORS.text,
+    color: COLORS.TEXT,
   },
   bioInput: {
     minHeight: 100,
@@ -719,10 +732,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   selectedInterest: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.PRIMARY,
   },
   interestText: {
-    color: COLORS.text,
+    color: COLORS.TEXT,
   },
   selectedInterestText: {
     color: '#fff',
@@ -740,10 +753,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   selectedAvailability: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.PRIMARY,
   },
   availabilityText: {
-    color: COLORS.text,
+    color: COLORS.TEXT,
   },
   selectedAvailabilityText: {
     color: '#fff',
@@ -751,7 +764,7 @@ const styles = StyleSheet.create({
   subsectionTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: COLORS.text,
+    color: COLORS.TEXT,
     marginBottom: 10,
   },
   chipContainer: {

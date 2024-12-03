@@ -137,24 +137,39 @@ export default function Profile() {
 
   const renderAvailability = () => {
     if (!user?.availability) return null;
+    console.log('Availability:', user.availability);
 
-    const availabilityText = [];
-    if (user.availability.weekdays) availabilityText.push('Entre semana');
-    if (user.availability.weekends) availabilityText.push('Fines de semana');
-    if (user.availability.mornings) availabilityText.push('Mañanas');
-    if (user.availability.afternoons) availabilityText.push('Tardes');
-    if (user.availability.evenings) availabilityText.push('Noches');
+    const { days, timeRanges } = user.availability;
+
+    if (!days?.length && !timeRanges?.length) return null;
 
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Disponibilidad</Text>
-        <View style={styles.availabilityContainer}>
-          {availabilityText.map((text, index) => (
-            <View key={index} style={styles.availabilityItem}>
-              <Text style={styles.availabilityText}>{text}</Text>
+        {days?.length > 0 && (
+          <View>
+            <Text style={styles.subsectionTitle}>Días</Text>
+            <View style={styles.tagsContainer}>
+              {days.map((day, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{day}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </View>
+        )}
+        {timeRanges?.length > 0 && (
+          <View style={{ marginTop: SPACING.MEDIUM }}>
+            <Text style={styles.subsectionTitle}>Horarios</Text>
+            <View style={styles.tagsContainer}>
+              {timeRanges.map((time, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{time}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
     );
   };
@@ -186,7 +201,7 @@ export default function Profile() {
       <View style={styles.header}>
         <TouchableOpacity onPress={handleChangePhoto}>
           <View style={styles.imageContainer}>
-            <Image source={{ uri: user.avatar }} style={styles.profileImage} />
+            <Image source={{ uri: user.photos[0] }} style={styles.profileImage} />
             <View style={styles.changePhotoButton}>
               <FontAwesome name="camera" size={16} color="#fff" />
             </View>
@@ -358,6 +373,12 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT,
     marginBottom: SPACING.MEDIUM,
   },
+  subsectionTitle: {
+    fontSize: TYPOGRAPHY.SIZES.MEDIUM,
+    fontWeight: TYPOGRAPHY.WEIGHTS.BOLD,
+    color: COLORS.TEXT,
+    marginBottom: SPACING.SMALL,
+  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -374,21 +395,18 @@ const styles = StyleSheet.create({
     color: COLORS.BACKGROUND,
     fontSize: TYPOGRAPHY.SIZES.SMALL,
   },
-  availabilityContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -SPACING.TINY,
+  infoSection: {
+    padding: SPACING.LARGE,
   },
-  availabilityItem: {
-    backgroundColor: COLORS.PRIMARY,
-    paddingHorizontal: SPACING.MEDIUM,
-    paddingVertical: SPACING.SMALL,
-    borderRadius: 20,
-    margin: SPACING.TINY,
+  infoTitle: {
+    fontSize: TYPOGRAPHY.SIZES.LARGE,
+    fontWeight: TYPOGRAPHY.WEIGHTS.BOLD,
+    color: COLORS.TEXT,
+    marginBottom: SPACING.MEDIUM,
   },
-  availabilityText: {
-    color: COLORS.BACKGROUND,
-    fontSize: TYPOGRAPHY.SIZES.SMALL,
+  infoText: {
+    fontSize: TYPOGRAPHY.SIZES.MEDIUM,
+    color: COLORS.TEXT,
   },
   editButton: {
     backgroundColor: COLORS.PRIMARY,
