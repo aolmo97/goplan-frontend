@@ -1,8 +1,10 @@
 // Configuración del entorno
 const ENV = {
   dev: {
-    API_URL: 'http://192.168.18.18:3000',
-    SOCKET_URL: 'ws://192.168.18.18:3000',
+    API_URL: 'http://192.168.1.5:3000',
+    SOCKET_URL: 'ws://192.168.1.5:3000',
+    //API_URL: 'http://192.168.18.18:3000',
+    //SOCKET_URL: 'ws://192.168.18.18:3000',
     ENVIRONMENT: 'development',
   },
   staging: {
@@ -26,8 +28,8 @@ export const ENVIRONMENT = currentEnv.ENVIRONMENT;
 
 // Configuración de la API
 export const API_CONFIG = {
-  BASE_URL: 'http://192.168.1.6:3000/api', // URL base para desarrollo
-//  BASE_URL: 'http://192.168.18.18:3000/api', // URL base para desarrollo
+  //BASE_URL: 'http://192.168.1.5:3000/api', // URL base para desarrollo
+  BASE_URL: 'http://192.168.18.18:3000/api', // URL base para desarrollo
   TIMEOUT: 10000, // Timeout en milisegundos
   ENDPOINTS: {
     AUTH: {

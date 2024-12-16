@@ -69,8 +69,6 @@ class StorageService {
   async getUserData() {
     try {
       const userData = await AsyncStorage.getItem(USER_DATA_KEY);
-      console.log('User dataaaa:', userData);
-      
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
       console.error('Error getting user data:', error);

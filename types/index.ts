@@ -13,8 +13,8 @@ export interface User {
     afternoons: boolean;
     evenings: boolean;
   };
-  plansCreated?: number;
-  plansJoined?: number;
+  plansCreated?: string[];
+  plansJoined?: string[];
   location?: {
     latitude: number;
     longitude: number;

@@ -20,6 +20,7 @@ import ProfileService from '../../services/profile';
 import StorageService from '../../services/storage'; // Importar StorageService
 import { User } from '../../types';
 import { API_CONFIG } from '../../config';
+import { useProfile } from '@/context/ProfileContext';
 
 interface UserProfile {
   id: string;
@@ -79,6 +80,7 @@ export default function EditProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const {refreshProfile} = useProfile();
 
   useEffect(() => {
     loadUserData();
@@ -440,10 +442,11 @@ export default function EditProfile() {
       setIsLoading(true);
       
       // Guardar en el servidor
-      await ProfileService.updateProfile({
+      const updatedProfile = await ProfileService.updateProfile({
         bio: user.bio,
         interests: user.interests,
         photos: user.photos,
+        avatar: user.photos[0],
         availability: {
           days: user.availability.days,
           timeRanges: user.availability.timeRanges,
@@ -451,8 +454,11 @@ export default function EditProfile() {
       });
 
       // Guardar localmente
-      await StorageService.setUserData(user);
-      
+      await StorageService.setUserData({
+        ...user,
+        ...updatedProfile
+      });
+      refreshProfile();
       router.back();
     } catch (error) {
       console.error('Error al guardar el perfil:', error);
@@ -542,7 +548,6 @@ export default function EditProfile() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Disponibilidad</Text>
             <View style={styles.availabilityContainer}>
-              <Text style={styles.subsectionTitle}>Días</Text>
               <View style={styles.chipContainer}>
                 {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day) => (
                   <TouchableOpacity
@@ -563,26 +568,6 @@ export default function EditProfile() {
                 ))}
               </View>
               
-              <Text style={[styles.subsectionTitle, { marginTop: 15 }]}>Horarios</Text>
-              <View style={styles.chipContainer}>
-                {['Mañana', 'Tarde', 'Noche'].map((time) => (
-                  <TouchableOpacity
-                    key={time}
-                    style={[
-                      styles.availabilityChip,
-                      user.availability.timeRanges.includes(time) && styles.selectedAvailability
-                    ]}
-                    onPress={() => toggleAvailability('timeRanges', time)}
-                  >
-                    <Text style={[
-                      styles.availabilityText,
-                      user.availability.timeRanges.includes(time) && styles.selectedAvailabilityText
-                    ]}>
-                      {time}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
             </View>
           </View>
         </View>
